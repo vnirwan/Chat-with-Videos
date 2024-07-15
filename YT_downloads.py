@@ -30,40 +30,48 @@ os.chdir(directory)
 
 # In[4]:
 
-# use pytube to download videos from YT
-from pytube import YouTube
+#from pytube import YouTube
+import yt_dlp
 # Specify the directory where you want to save the videos
-download_path = 'your_working_directory/download_folder'
+#folder_path = 'content/YTvideos'
+download_path = 'C:/Users/vnirwan/Desktop/Vaishu/AI Course/EA use case/Fresh version/docs/YT_demo2'
+subfolder_path = r'C:\Users\vnirwan\Desktop\Vaishu\AI Course\EA use case\Fresh version\docs\YT_demo2\old_videos'
 def download_videos(video_urls):
-    """
-    This function downloads YT videos to your specified folder
-    """
-    subfolder_path ='your_working_directory/download_folder/old_videos' # to move the existing videos to an old folder, so that we only process the new videos
+    # Create download path and subfolder if they don't exist
+    if not os.path.exists(download_path):
+        os.makedirs(download_path)
+    if not os.path.exists(subfolder_path):
+        os.makedirs(subfolder_path)
+
     # List all files in the main folder
     files = [f for f in os.listdir(download_path) if os.path.isfile(os.path.join(download_path, f))]
 
-# Move each file to the subfolder, so that we only run our code for the new YT url 
+    # Move each file to the subfolder, so that we only run our code for the new YT URL
     for file in files:
         src_path = os.path.join(download_path, file)
         dst_path = os.path.join(subfolder_path, file)
         shutil.move(src_path, dst_path)
     
-    if not os.path.exists(download_path):
-        os.makedirs(download_path)
+    # Define download options
+    ydl_opts = {
+        'format': 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
+        'outtmpl': os.path.join(download_path, '%(title)s.%(ext)s'),  # Save with the title of the video as filename
+    }
+    
+    # Function to download a video from a given URL
+    def download_video_yt_dlp(url):
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+
+    # Download each video in the list
     for video_url in video_urls:
         try:
-            # Create a YouTube object
-            yt = YouTube(video_url)
-
-            # Choose the stream you want to download (e.g., the highest resolution stream)
-            stream = yt.streams.get_highest_resolution()
-
-            # Download the video to the specified directory
-            stream.download(output_path=download_path)
-
-            print(f'Video from URL {video_url} downloaded successfully!')
+            print(f"Downloading video from URL: {video_url}")
+            download_video_yt_dlp(video_url)
+            print(f"Successfully downloaded video from URL: {video_url}")
         except Exception as e:
             print(f'Error downloading video from URL {video_url}: {str(e)}')
+
             
 def convert_to_text():
     """
