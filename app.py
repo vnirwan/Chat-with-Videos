@@ -1,14 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[2]:
-
-
-#pip install streamlit
-
-
-# In[15]:
-
 
 import streamlit as st
 from langchain.chains import RetrievalQA
@@ -17,25 +6,30 @@ import os
 import openai
 import sys
 import datetime
+import time
+import cv2
+import base64
+from IPython.display import display, Image
+import whisper
 
-from langchain_openai import ChatOpenAI
-from langchain.chains import ConversationalRetrievalChain
-from langchain.memory import ConversationSummaryBufferMemory
+import youtube_dl
+from dotenv import load_dotenv, find_dotenv
+from langchain.document_loaders import TextLoader
+from langchain.text_splitter import CharacterTextSplitter
 from langchain_openai import OpenAIEmbeddings
-from YT_downloads import download_videos,process_videos,convert_to_text   #importing functions from YT_dowmload file
+from langchain.vectorstores import Chroma
+import shutil
 
 
-# In[16]:
 
-
-directory = r'your_working_directory'
+directory = r'your_dir'
 
 # Change the current working directory to the specified directory
 os.chdir(directory)
-download_path = 'your_working_directory/download_folder' #Folder to store downloaded YT videos
-persist_directory = 'your_working_directory/download_folder/cromadb_dir2' #VectorDB folder
-
-# In[17]:
+persist_directory = 'your_dir/cromadb_dir2'
+# Specify the directory where you want to save the videos
+download_path = 'your_directory/docs/YT_demo2'
+subfolder_path = r'your_directory\YT_demo2\old_videos' #to save already processed videos. You can also delete them
 
 
 sys.path.append('../..')
@@ -44,42 +38,37 @@ from dotenv import load_dotenv, find_dotenv
 _ = load_dotenv(find_dotenv()) # read local .env file
 os.environ["OPENAI_API_KEY"] = "your_openai_key"
 
-
-
-
-
-# In[29]:
-
+from langchain_openai import ChatOpenAI
+from langchain.chains import ConversationalRetrievalChain
+from langchain.memory import ConversationSummaryBufferMemory
+from langchain_openai import OpenAIEmbeddings
+#from YT_downloads import download_videos,process_videos,convert_to_text
+import frames_transcript
+#Import all functions from frames_transcript file
+from frames_transcript import download_videos,convert_video_to_frames,generate_summary_from_frames,generate_video_transcript,combine_summary_and_transcript,process_videos
 
 # Function to load the vectorDB
 def load_vectordb(persist_directory,embedding):
     
     return Chroma(persist_directory=persist_directory, embedding_function=embedding)
 
-
-# In[30]:
-
-
-# Function to retrieve information using vectorDB
+# Function to retrieve information using the vectorDB
 def retrieve_info(question, vectordb, my_llm, my_memory):
     qa_chain =  ConversationalRetrievalChain.from_llm(
-        llm=my_llm, #Your choice of LLM
-        memory=my_memory, #memeory is used from langchain. There are a few different types of memories you can use. 
-        chain_type="stuff", #Stuff is the basic one- meaning providing all context information at once to llm. There are other types - map_reduce (breaks info into stages and then combine results from all stages), refine (start with an initial anaswer and then refine in subsequent turns) and map_rerank(selecting the best answer)
+        llm=my_llm,
+        memory=my_memory,
+        chain_type="stuff",
         retriever=vectordb.as_retriever(),
-        return_source_documents=True, #Ensures that the source documents used to generate the response are returned, which can be useful for validation and reference.
-        get_chat_history=lambda h : h, # A lambda function to retrieve the chat history
+        return_source_documents=True,
+        get_chat_history=lambda h : h,
         verbose=False)
 
     response = qa_chain.invoke({"question": question})
     return response
 
-# In[37]:
 
-#using streamlit to desing UI.
 def main():
     st.title("Chat with Videos")
-
 
     if not os.path.exists(persist_directory):
         st.error(f"Directory {persist_directory} does not exist. Please run the save_to_vectordb script first.")
@@ -94,7 +83,6 @@ def main():
         llm_name = "gpt-3.5-turbo-0301"
     else:
         llm_name = "gpt-3.5-turbo"
-        
     my_llm = ChatOpenAI(model_name=llm_name, temperature=0)
 
     # Initialize memory
@@ -103,7 +91,7 @@ def main():
             llm=my_llm,
             output_key='answer',
             memory_key='chat_history',
-            return_messages=True  # Indicates that the full conversation messages should be returned, not just the summaries
+            return_messages=True
         )
     
     # Initialize chat history
@@ -114,7 +102,6 @@ def main():
     st.write("### Chat History")
     for i, message in enumerate(st.session_state.chat_history):
         st.write(f"{i + 1}. {message['user']}: {message['text']}")
-        #Uncomment next line if you want to display source document too.
         #if 'source_documents' in message:
             #st.write(f"   **Source Documents:** {message['source_documents']}")
 
@@ -142,19 +129,27 @@ def main():
             with st.spinner('Downloading videos...'):
                 urls_list = [url.strip() for url in video_urls.split(',')]
                 download_videos(urls_list)
-                combined_file_name=convert_to_text()
-                process_videos(combined_file_name)
-                st.success("Videos downloaded and processed successfully!")
+                st.success("Videos downloaded successfully!")
                 
         else:
             st.error("Please enter at least one video URL.")
+            
+    if st.button("Process Videos"):
+        with st.spinner('Processing videos...'):
+            
 
+            video_files = [f for f in os.listdir(download_path) if f.endswith('.mp4')]
+                
+            for video_file in video_files:
+                video_path = os.path.join(download_path, video_file)
+                frames=convert_video_to_frames(video_path)
+                summary=generate_summary_from_frames(frames)
+                transcript=generate_video_transcript(video_path)
+                combined_file_name = 'combined_video_data_demo.txt'
+                combine_summary_and_transcript(summary, transcript, combined_file_name)
+                process_videos(combined_file_name)
+            st.success("Videos processed successfully!")
+                
+        
 if __name__ == "__main__":
     main()
-
-
-# In[ ]:
-
-
-
-
