@@ -1,5 +1,5 @@
 # Chat-with-Videos
-This project uses RAG, LangChain, ChatGPT (clip models), and a vector database to enable users to chat with videos instead of watching them. Users can query video content through conversational interaction, retrieving specific and **correct** information efficiently without viewing the entire video.
+This project uses RAG, LangChain, ChatGPT (clip model), and a vector database to enable users to chat with videos instead of watching them. Users can query video content through conversational interaction, retrieving specific and **correct** information efficiently without viewing the entire video.
 ## Key Features
 Conversational Interaction: Users can query video content through a chat interface, making it easy to find precise information without watching the full video.
 Retrieval-Augmented Generation (RAG): Combines retrieval and generation capabilities to provide accurate and contextually relevant answers. It preserves the semantic meaning of sentences. 
